@@ -1,3 +1,4 @@
+import random
 import time
 import openai
 import json
@@ -39,7 +40,7 @@ safety_settings = [
 class Assistant:
     def __init__(self):
         self.sys_prompt = """
-Você é uma assistente inteligente que usa o histórico da conversa e a screenshot atual do usuário para responder às suas perguntas.
+Você é uma assistente de voz inteligente que usa o histórico da conversa e a screenshot atual do usuário para responder às suas perguntas.
 
 REGRAS:
     Use apenas ferramentas listadas acima.
@@ -50,7 +51,6 @@ REGRAS:
 
 Use o seguinte formato de resposta:
 {
-    'desc_imagem' : String, # Descrição detalhada da imagem
     'imagem_relevante': Boolean, # Se o conteúdo da imagem é relevante para responder à mensagem
     'fala': String, # Texto a ser transformada em audio e enviado para o usuário.
 }
@@ -66,7 +66,7 @@ Use o seguinte formato de resposta:
         self.running = True
 
     def __enter__(self):
-        self.recorder = AudioToTextRecorder(model = 'base', language='pt', spinner=False)
+        self.recorder = AudioToTextRecorder(model = 'base', language='pt')
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -84,7 +84,12 @@ Use o seguinte formato de resposta:
     def generate(self, text, image):
         while True:
             try:
-                return json.loads(self.model.generate_content([text, image]).text)
+                phrase_start = random.choice(['Ahmmmmm......', 'Vejamos......', 'Hmmmmm......', 'Certo......', 'Deixa eu ver......'])
+                self.talking = True
+                self.talk_thread = Thread(target=self.talk, args=(phrase_start,1,))
+                self.talk_thread.start()
+                self.talk_thread.join()
+                return json.loads(self.model.generate_content([image, text]).text)
             except Exception as e:
                 print(f'Erro ao gerar resposta: {e}')
                 time.sleep(2)
@@ -102,7 +107,7 @@ Use o seguinte formato de resposta:
             self.stop_talk()
             
         # Se for encerrar, sai
-        if input_text.lower().strip() == "finalizar conversa":
+        if input_text.lower().strip(' .') == "finalizar conversa":
             self.running = False
             return
 
@@ -139,7 +144,7 @@ Use o seguinte formato de resposta:
             self.handle_command(self.recorder.text())
 
     # Funções de Fala
-    def talk(self, response):
+    def talk(self, response, speed = 1.10):
         player = PyAudio().open(format=paInt16, channels=1, rate=24000, output=True)
 
         local_thread = current_thread()
@@ -150,7 +155,7 @@ Use o seguinte formato de resposta:
             voice="nova",
             response_format="pcm",
             input=response,
-            speed=1.25
+            speed=speed
         ) as stream:
             for chunk in stream.iter_bytes(chunk_size=1024):
                 if local_thread.alive:
