@@ -1,0 +1,11 @@
+opencv-python
+python-dotenv
+pyaudio
+soundfile
+git+https://github.com/openai/whisper.git
+RealtimeSTT
+pyscreenshot
+google.generativeai
+openai
+pillow
+keyboard
