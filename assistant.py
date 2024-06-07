@@ -1,5 +1,6 @@
 import time
 import openai
+import json
 from threading import Thread, current_thread
 
 # Terminate the process
@@ -10,11 +11,11 @@ from RealtimeSTT import AudioToTextRecorder
 
 # Configurações do Gemini
 generation_config = {
-  "temperature": 0.7,
+  "temperature": 0.8,
   "top_p": 0.95,
   "top_k": 64,
-  "max_output_tokens": 512,
-  "response_mime_type": "text/plain",
+  "max_output_tokens": 1024,
+  "response_mime_type": "application/json",
 }
 safety_settings = [
   {
@@ -38,9 +39,21 @@ safety_settings = [
 class Assistant:
     def __init__(self):
         self.sys_prompt = """
-Você é um assistente inteligente que usará o histórico da conversa e a imagem fornecida pelo usuário para responder às suas perguntas.
-Responda de forma concisa e direta. Não use emoticons ou emojis. Não faça perguntas ao usuário.
-Seja amigável e prestativo. Mostre alguma personalidade e evite ser muito formal.
+Você é uma assistente inteligente que usa o histórico da conversa e a screenshot atual do usuário para responder às suas perguntas.
+
+REGRAS:
+    Use apenas ferramentas listadas acima.
+    Use ferramentas apenas quando necessário.
+    Responda de forma concisa e direta. 
+    Seja amigável e prestativa. 
+    Mostre alguma personalidade e evite ser muito formal.
+
+Use o seguinte formato de resposta:
+{
+    'desc_imagem' : String, # Descrição detalhada da imagem
+    'imagem_relevante': Boolean, # Se o conteúdo da imagem é relevante para responder à mensagem
+    'fala': String, # Texto a ser transformada em audio e enviado para o usuário.
+}
         """
         self.history = []
         self.model = genai.GenerativeModel(
@@ -53,7 +66,7 @@ Seja amigável e prestativo. Mostre alguma personalidade e evite ser muito forma
         self.running = True
 
     def __enter__(self):
-        self.recorder = AudioToTextRecorder(language='pt', spinner=False)
+        self.recorder = AudioToTextRecorder(model = 'base', language='pt', spinner=False)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -71,7 +84,7 @@ Seja amigável e prestativo. Mostre alguma personalidade e evite ser muito forma
     def generate(self, text, image):
         while True:
             try:
-                return self.model.generate_content([text, image]).text
+                return json.loads(self.model.generate_content([text, image]).text)
             except Exception as e:
                 print(f'Erro ao gerar resposta: {e}')
                 time.sleep(2)
@@ -94,29 +107,32 @@ Seja amigável e prestativo. Mostre alguma personalidade e evite ser muito forma
             return
 
         # Se for um comando em linguagem natural
-        self.answer(input_text)
+        # Obtém a o texto transcrito e a imagem atual da tela
+        self.answer(input_text, ImageGrab.grab())
 
         # Continua a rodar
         self.run()
 
-    def answer(self, prompt):
+    def answer(self, prompt, imagem):
+        # Evita mensagens em branco
+        if len(prompt) < 0:
+            return 
+        
         # Adiciona a pergunta ao histórico
         self.history.append({ "role": "user", "content": prompt })
-
-        # Obtém a imagem atual da tela
-        image = ImageGrab.grab()
-
         print(f'Usuário: {prompt}')
+
         # Gera uma resposta
-        result = self.generate(self.make_prompt(), image)
-        # Exibe e gera audio da resposta
-        print(f'Assistente: {result}')
+        result = self.generate(self.make_prompt(), imagem)
+
+        # Exibe texto e gera audio da resposta
+        print(f'Assistente: {result["fala"]}')
         self.talking = True
-        self.talk_thread = Thread(target=self.talk, args=(result,))
+        self.talk_thread = Thread(target=self.talk, args=(result["fala"],))
         self.talk_thread.start()
 
         # Adiciona a resposta ao histórico
-        self.history.append({ "role": "assistant", "content": result })
+        self.history.append({ "role": "assistant", "content": result["fala"] })
 
     def listen(self):
             print('Ouvindo...')
