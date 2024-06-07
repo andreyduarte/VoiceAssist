@@ -66,14 +66,30 @@ Seja amigável e prestativo. Mostre alguma personalidade e evite ser muito forma
     def run(self):
         while self.running:
             self.listen()
+    
+    # Funções de Geração
+    def generate(self, text, image):
+        while True:
+            try:
+                return self.model.generate_content([text, image]).text
+            except Exception as e:
+                print(f'Erro ao gerar resposta: {e}')
+                time.sleep(2)
 
+    def make_prompt(self):
+        prompt = ""
+        for message in self.history:
+            prompt += f"{message['role']}: {message['content']}\n"
+        return prompt
+    
+    # Funções de Interface
     def handle_command(self, input_text):
         # Se estiver falando, para
         if self.talking:
             self.stop_talk()
             
         # Se for encerrar, sai
-        if input_text.lower().strip() == "encerrar":
+        if input_text.lower().strip() == "finalizar conversa":
             self.running = False
             return
 
@@ -102,24 +118,11 @@ Seja amigável e prestativo. Mostre alguma personalidade e evite ser muito forma
         # Adiciona a resposta ao histórico
         self.history.append({ "role": "assistant", "content": result })
 
-    def generate(self, text, image):
-        while True:
-            try:
-                return self.model.generate_content([text, image]).text
-            except Exception as e:
-                print(f'Erro ao gerar resposta: {e}')
-                time.sleep(2)
-
-    def make_prompt(self):
-        prompt = ""
-        for message in self.history:
-            prompt += f"{message['role']}: {message['content']}\n"
-        return prompt
-    
     def listen(self):
             print('Ouvindo...')
             self.handle_command(self.recorder.text())
 
+    # Funções de Fala
     def talk(self, response):
         player = PyAudio().open(format=paInt16, channels=1, rate=24000, output=True)
 
