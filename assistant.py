@@ -49,11 +49,11 @@ Seja amigável e prestativo. Mostre alguma personalidade e evite ser muito forma
           generation_config=generation_config,
           system_instruction=self.sys_prompt
         )
-        self.recorder = AudioToTextRecorder(language='pt', spinner=False)
         self.talking = False
         self.running = True
 
     def __enter__(self):
+        self.recorder = AudioToTextRecorder(language='pt', spinner=False)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -69,9 +69,7 @@ Seja amigável e prestativo. Mostre alguma personalidade e evite ser muito forma
 
     def handle_command(self, input_text):
         if self.talking:
-            self.talking = False
-            self.talk_thread.alive = False
-            self.talk_thread.join()
+            self.stop_talk()
 
         # Se for um comando em linguagem natural
         self.answer(input_text)
@@ -86,12 +84,13 @@ Seja amigável e prestativo. Mostre alguma personalidade e evite ser muito forma
         # Obtém a imagem atual da tela
         image = ImageGrab.grab()
 
+        print(f'Usuário: {prompt}')
         # Gera uma resposta
         result = self.generate(self.make_prompt(), image)
         # Exibe e gera audio da resposta
         print(f'Assistente: {result}')
         self.talking = True
-        self.talk_thread = Thread(target=self._tts, args=(result,))
+        self.talk_thread = Thread(target=self.talk, args=(result,))
         self.talk_thread.start()
 
         # Adiciona a resposta ao histórico
@@ -112,9 +111,10 @@ Seja amigável e prestativo. Mostre alguma personalidade e evite ser muito forma
         return prompt
     
     def listen(self):
+            print('Ouvindo...')
             self.handle_command(self.recorder.text())
 
-    def _tts(self, response):
+    def talk(self, response):
         player = PyAudio().open(format=paInt16, channels=1, rate=24000, output=True)
 
         local_thread = current_thread()
@@ -133,3 +133,8 @@ Seja amigável e prestativo. Mostre alguma personalidade e evite ser muito forma
                 else:
                     break
             player.close()
+
+    def stop_talk(self):
+        self.talking = False
+        self.talk_thread.alive = False
+        self.talk_thread.join()
