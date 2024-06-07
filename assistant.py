@@ -68,8 +68,14 @@ Seja amigável e prestativo. Mostre alguma personalidade e evite ser muito forma
             self.listen()
 
     def handle_command(self, input_text):
+        # Se estiver falando, para
         if self.talking:
             self.stop_talk()
+            
+        # Se for encerrar, sai
+        if input_text.lower().strip() == "encerrar":
+            self.running = False
+            return
 
         # Se for um comando em linguagem natural
         self.answer(input_text)
