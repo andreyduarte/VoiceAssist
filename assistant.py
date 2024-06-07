@@ -4,9 +4,8 @@ import openai
 import json
 from threading import Thread, current_thread
 
-# Terminate the process
+from vision import Vision
 from pyaudio import PyAudio, paInt16
-import pyscreenshot as ImageGrab
 import google.generativeai as genai
 from RealtimeSTT import AudioToTextRecorder
 
@@ -40,22 +39,21 @@ safety_settings = [
 class Assistant:
     def __init__(self):
         self.sys_prompt = """
-Você é uma assistente de voz inteligente que usa o histórico da conversa e a screenshot atual do usuário para responder às suas perguntas.
+These are frames of a videofeed of the user's screen.
+Você é uma assistente de voz inteligente que usa o histórico da conversa e o feed de video para responder às suas perguntas do usuário.
 
 REGRAS:
-    Use apenas ferramentas listadas acima.
-    Use ferramentas apenas quando necessário.
-    Responda de forma concisa e direta. 
-    Seja amigável e prestativa. 
-    Mostre alguma personalidade e evite ser muito formal.
+    Responda de forma concisa e direta, usando o vídeo como contexto. 
+    Seja amigável e prestativa, mostre alguma personalidade e evite ser muito formal.
 
 Use o seguinte formato de resposta:
-{
-    'imagem_relevante': Boolean, # Se o conteúdo da imagem é relevante para responder à mensagem
-    'fala': String, # Texto a ser transformada em audio e enviado para o usuário.
+{   
+    'descricao_video': String, # Descrição detalhada do conteúdo do vídeo
+    'fala': String, # Texto a ser transformado em audio e reproduzido para o usuário.
 }
         """
         self.history = []
+        self.vision = Vision(fps=2, buffer = 60)
         self.model = genai.GenerativeModel(
           model_name="gemini-1.5-flash-latest",
           safety_settings=safety_settings,
@@ -66,11 +64,13 @@ Use o seguinte formato de resposta:
         self.running = True
 
     def __enter__(self):
+        self.vision.start()
         self.recorder = AudioToTextRecorder(model = 'base', language='pt')
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.recorder.shutdown()
+        self.vision.stop()
         if self.talking:
             self.talking = False
             self.talk_thread.alive = False
@@ -89,7 +89,7 @@ Use o seguinte formato de resposta:
                 self.talk_thread = Thread(target=self.talk, args=(phrase_start,1,))
                 self.talk_thread.start()
                 self.talk_thread.join()
-                return json.loads(self.model.generate_content([image, text]).text)
+                return json.loads(self.model.generate_content([*image, text]).text)
             except Exception as e:
                 print(f'Erro ao gerar resposta: {e}')
                 time.sleep(2)
@@ -113,7 +113,7 @@ Use o seguinte formato de resposta:
 
         # Se for um comando em linguagem natural
         # Obtém a o texto transcrito e a imagem atual da tela
-        self.answer(input_text, ImageGrab.grab())
+        self.answer(input_text, self.vision.get_imgs())
 
         # Continua a rodar
         self.run()
