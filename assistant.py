@@ -65,7 +65,7 @@ Use o seguinte formato de resposta:
 
     def __enter__(self):
         self.vision.start()
-        self.recorder = AudioToTextRecorder(model = 'base', language='pt')
+        self.recorder = AudioToTextRecorder(model = 'tiny', language='pt', spinner=False)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -84,11 +84,7 @@ Use o seguinte formato de resposta:
     def generate(self, text, image):
         while True:
             try:
-                phrase_start = random.choice(['Ahmmmmm......', 'Vejamos......', 'Hmmmmm......', 'Certo......', 'Deixa eu ver......'])
-                self.talking = True
-                self.talk_thread = Thread(target=self.talk, args=(phrase_start,1,))
-                self.talk_thread.start()
-                self.talk_thread.join()
+                self.say(random.choice(['Aaahmmmmm...', 'Hmmmmm......', 'Um momento, por favor...']), speed=0.8)
                 return json.loads(self.model.generate_content([*image, text]).text)
             except Exception as e:
                 print(f'Erro ao gerar resposta: {e}')
@@ -132,9 +128,7 @@ Use o seguinte formato de resposta:
 
         # Exibe texto e gera audio da resposta
         print(f'Assistente: {result["fala"]}')
-        self.talking = True
-        self.talk_thread = Thread(target=self.talk, args=(result["fala"],))
-        self.talk_thread.start()
+        self.say(result["fala"])
 
         # Adiciona a resposta ao histórico
         self.history.append({ "role": "assistant", "content": result["fala"] })
@@ -144,7 +138,13 @@ Use o seguinte formato de resposta:
             self.handle_command(self.recorder.text())
 
     # Funções de Fala
-    def talk(self, response, speed = 1.10):
+    def say(self, text, speed = 1):
+        self.talking = True
+        self.talk_thread = Thread(target=self._tts, args=(text,speed,))
+        self.talk_thread.start()
+        self.talk_thread.join()
+
+    def _tts(self, response, speed = 1):
         player = PyAudio().open(format=paInt16, channels=1, rate=24000, output=True)
 
         local_thread = current_thread()
