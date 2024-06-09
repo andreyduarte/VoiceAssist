@@ -6,7 +6,9 @@ import numpy as np
 import mss
 
 class Vision:
-    def __init__(self, fps=20, buffer = 5):
+    def __init__(self, fps=20, buffer = 5, width=1920, height=1080):
+        self.width = width
+        self.height = height
         self.fps = fps
         self.interval = 1/self.fps
         self.max_frames = int(self.fps * buffer)
@@ -38,7 +40,9 @@ class Vision:
                 img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
 
                 # Converte para PIL Image
-                img = Image.fromarray(img)
+                img = Image.fromarray(img).resize((self.width, self.height))
+
+                # Adiciona a imagem à lista
 
                 with self.lock:
                     self.frames.append(img)

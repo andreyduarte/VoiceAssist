@@ -1,3 +1,6 @@
 .env
 realtimesst.log
 __pycache__/assistant.cpython-310.pyc
+__pycache__/hearing.cpython-310.pyc
+__pycache__/vision.cpython-310.pyc
+__pycache__/oGUI.cpython-310.pyc

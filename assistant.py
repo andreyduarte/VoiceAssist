@@ -48,12 +48,11 @@ REGRAS:
 
 Use o seguinte formato de resposta:
 {   
-    'descricao_video': String, # Descrição detalhada do conteúdo do vídeo
     'fala': String, # Texto a ser transformado em audio e reproduzido para o usuário.
 }
         """
         self.history = []
-        self.vision = Vision(fps=2, buffer = 60)
+        self.vision = Vision(fps=1, buffer = 30, width=640, height=360)
         self.model = genai.GenerativeModel(
           model_name="gemini-1.5-flash-latest",
           safety_settings=safety_settings,
