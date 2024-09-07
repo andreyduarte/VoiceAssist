@@ -40,7 +40,7 @@ class Vision:
                 img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
 
                 # Converte para PIL Image
-                img = Image.fromarray(img).resize((self.width, self.height))
+                img = Image.fromarray(img)#.resize((self.width, self.height))
 
                 # Adiciona a imagem à lista
 
